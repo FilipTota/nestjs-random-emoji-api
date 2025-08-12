@@ -2,11 +2,38 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { LoggerMiddleware } from './common/logger/logger.middleware';
+import { LoggerService } from './logger.service';
+import { AuthGuard } from './common/auth/auth.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { BrowserInterceptor } from './common/browser/browser.interceptor';
+import { APP_INTERCEPTOR } from '@nestjs/core';
+import { TransformResponseInterceptor } from './common/transform-response/transform-response.interceptor';
+import { AllExceptionsFilter } from './common/all-exceptions/all-exceptions.filter';
+import { APP_FILTER } from '@nestjs/core';
 
 @Module({
   imports: [],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    LoggerService,
+    {
+      provide: APP_GUARD,
+      useClass: AuthGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: BrowserInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformResponseInterceptor,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: AllExceptionsFilter,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
