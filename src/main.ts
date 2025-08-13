@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for Railway deployment
+  // CORS for Railway deployment
   app.enableCors({
     origin: true,
     credentials: true,
