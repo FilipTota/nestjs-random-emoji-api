@@ -7,15 +7,6 @@ import { Request } from 'express';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get('health')
-  getHealth() {
-    return {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'nestjs-random-emoji-api',
-    };
-  }
-
   @Get()
   getEmoji(
     @Req() request: Request,
