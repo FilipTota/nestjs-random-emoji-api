@@ -14,7 +14,35 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/build
       - name: Install Railway CLI
-        run: pnpm add --global @railway/cli
+        run: npm install -g @railway/cli
+      - name: Check Railway CLI version
+        run: |
+          echo "Railway CLI version:"
+          railway --version
+          echo "Railway CLI help:"
+          railway --help
+      - name: Setup Railway authentication
+        run: |
+          echo "Setting up Railway authentication..."
+          mkdir -p ~/.railway
+          # Try multiple authentication methods for newer Railway CLI
+          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
+          echo "Railway token files created"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      - name: Verify Railway authentication
+        run: |
+          echo "Verifying Railway authentication..."
+          railway whoami
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+      - name: Try direct token authentication
+        run: |
+          echo "Trying direct token authentication..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
+        continue-on-error: true
       - name: Deploy to Railway
         run: railway up --service="nestjs-random-emoji-api"
         env:
