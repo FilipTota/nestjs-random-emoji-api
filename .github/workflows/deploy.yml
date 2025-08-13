@@ -40,8 +40,11 @@ jobs:
         run: |
           echo "Setting up Railway authentication..."
           mkdir -p ~/.railway
-          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token.json
-          echo "Token file created:"
+          # Railway CLI expects the token in a specific format
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
+          echo "Token file created with content:"
+          cat ~/.railway/token.json
+          echo "Token file permissions:"
           ls -la ~/.railway/
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -51,6 +54,46 @@ jobs:
           echo "Trying alternative authentication method..."
           export RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}"
           echo "RAILWAY_TOKEN environment variable set"
+          # Also try setting it in the current shell
+          echo "Setting token in current shell..."
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
+        continue-on-error: true
+
+      - name: Try Railway CLI with explicit token
+        run: |
+          echo "Trying Railway CLI with explicit token..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
+        continue-on-error: true
+
+      - name: Check token format
+        run: |
+          echo "Checking Railway token format..."
+          echo "Token length: ${#RAILWAY_TOKEN}"
+          echo "Token starts with: ${RAILWAY_TOKEN:0:10}..."
+          echo "Token ends with: ...${RAILWAY_TOKEN: -10}"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try different token formats
+        run: |
+          echo "Trying different token formats..."
+          # Try with just the token value
+          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token
+          # Try with JSON format
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
+          # Try with different file names
+          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/config.json
+          echo "All token files created"
+        continue-on-error: true
+
+      - name: Try Railway CLI with different token files
+        run: |
+          echo "Trying Railway CLI with different token files..."
+          echo "Testing with token file:"
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
+          echo "Testing with token.json file:"
+          railway whoami
         continue-on-error: true
 
       - name: Verify Railway token
