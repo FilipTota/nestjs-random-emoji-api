@@ -49,73 +49,56 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-      - name: Alternative Railway authentication
+      - name: Test Railway authentication
         run: |
-          echo "Trying alternative authentication method..."
-          export RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}"
-          echo "RAILWAY_TOKEN environment variable set"
-          # Also try setting it in the current shell
-          echo "Setting token in current shell..."
-          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
+          echo "Testing Railway authentication..."
+          echo "Method 1: Using config file"
+          railway whoami
         continue-on-error: true
 
-      - name: Try Railway CLI with explicit token
+      - name: Test with environment variable
         run: |
-          echo "Trying Railway CLI with explicit token..."
+          echo "Method 2: Using environment variable"
           RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
         continue-on-error: true
 
-      - name: Check token format
+      - name: Check if token is working
         run: |
-          echo "Checking Railway token format..."
+          echo "Checking if Railway token is valid..."
           echo "Token length: ${#RAILWAY_TOKEN}"
           echo "Token starts with: ${RAILWAY_TOKEN:0:10}..."
           echo "Token ends with: ...${RAILWAY_TOKEN: -10}"
+          echo "Testing token directly..."
+          curl -H "Authorization: Bearer ${{ secrets.RAILWAY_TOKEN }}" \
+               "https://backboard.railway.app/graphql/v2" \
+               -X POST \
+               -H "Content-Type: application/json" \
+               -d '{"query":"query { me { id email } }"}' \
+               --silent --show-error
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         continue-on-error: true
 
-      - name: Try different token formats
+      - name: Verify token in environment
         run: |
-          echo "Trying different token formats..."
-          # Try with just the token value
-          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token
-          # Try with JSON format
-          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
-          # Try with different file names
-          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/config.json
-          echo "All token files created"
-        continue-on-error: true
-
-      - name: Try Railway CLI with different token files
-        run: |
-          echo "Trying Railway CLI with different token files..."
-          echo "Testing with token file:"
-          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
-          echo "Testing with token.json file:"
+          echo "Verifying token is set in environment..."
+          if [ -n "$RAILWAY_TOKEN" ]; then
+            echo "✅ RAILWAY_TOKEN is set (length: ${#RAILWAY_TOKEN})"
+          else
+            echo "❌ RAILWAY_TOKEN is NOT set"
+          fi
+          echo "Testing with railway whoami..."
           railway whoami
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         continue-on-error: true
 
-      - name: Try Railway CLI with config file
+      - name: Try direct token usage
         run: |
-          echo "Trying Railway CLI with config file..."
-          echo "Current config file content:"
-          cat ~/.railway/config.json
-          echo "Testing with config file:"
-          railway whoami
+          echo "Trying to use token directly in Railway commands..."
+          echo "Attempting to list projects with token..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway list
         continue-on-error: true
-
-      - name: Try Railway CLI with environment variable
-        run: |
-          echo "Trying Railway CLI with environment variable..."
-          echo "Setting RAILWAY_TOKEN in current step..."
-          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
-        continue-on-error: true
-
-      - name: Verify Railway token
-        run: |
-          echo "Verifying Railway token..."
-          railway whoami
 
       - name: List Railway projects
         run: |
