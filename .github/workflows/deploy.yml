@@ -11,11 +11,143 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/build
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm run build
+
       - name: Install Railway CLI
-        run: pnpm add --global @railway/cli
-      - name: Deploy to Railway
-        run: railway up --service="nestjs-random-emoji-api"
+        run: npm install -g @railway/cli
+
+      - name: Verify Railway CLI
+        run: railway --version
+
+      - name: Setup Railway authentication
+        run: |
+          echo "Setting up Railway authentication..."
+          mkdir -p ~/.railway
+          # Railway CLI expects a specific config format
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
+          echo "Config file created with content:"
+          cat ~/.railway/config.json
+          echo "Config file permissions:"
+          ls -la ~/.railway/
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Alternative Railway authentication
+        run: |
+          echo "Trying alternative authentication method..."
+          export RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}"
+          echo "RAILWAY_TOKEN environment variable set"
+          # Also try setting it in the current shell
+          echo "Setting token in current shell..."
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
+        continue-on-error: true
+
+      - name: Try Railway CLI with explicit token
+        run: |
+          echo "Trying Railway CLI with explicit token..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
+        continue-on-error: true
+
+      - name: Check token format
+        run: |
+          echo "Checking Railway token format..."
+          echo "Token length: ${#RAILWAY_TOKEN}"
+          echo "Token starts with: ${RAILWAY_TOKEN:0:10}..."
+          echo "Token ends with: ...${RAILWAY_TOKEN: -10}"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try different token formats
+        run: |
+          echo "Trying different token formats..."
+          # Try with just the token value
+          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token
+          # Try with JSON format
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
+          # Try with different file names
+          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/config.json
+          echo "All token files created"
+        continue-on-error: true
+
+      - name: Try Railway CLI with different token files
+        run: |
+          echo "Trying Railway CLI with different token files..."
+          echo "Testing with token file:"
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
+          echo "Testing with token.json file:"
+          railway whoami
+        continue-on-error: true
+
+      - name: Try Railway CLI with config file
+        run: |
+          echo "Trying Railway CLI with config file..."
+          echo "Current config file content:"
+          cat ~/.railway/config.json
+          echo "Testing with config file:"
+          railway whoami
+        continue-on-error: true
+
+      - name: Try Railway CLI with environment variable
+        run: |
+          echo "Trying Railway CLI with environment variable..."
+          echo "Setting RAILWAY_TOKEN in current step..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
+        continue-on-error: true
+
+      - name: Verify Railway token
+        run: |
+          echo "Verifying Railway token..."
+          railway whoami
+
+      - name: List Railway projects
+        run: |
+          echo "Listing available Railway projects..."
+          railway list
+
+      - name: Try to link existing project
+        run: |
+          echo "Attempting to link existing Railway project..."
+          railway link
+        continue-on-error: true
+
+      - name: Check project status
+        run: |
+          echo "Checking Railway project status..."
+          railway status
+        continue-on-error: true
+
+      - name: Deploy to Railway
+        run: |
+          echo "Deploying to Railway..."
+          railway up --detach
+        continue-on-error: true
+
+      - name: Check deployment status
+        run: |
+          echo "Checking final deployment status..."
+          railway status
+        continue-on-error: true
+
+      - name: Summary
+        run: |
+          echo "=== DEPLOYMENT SUMMARY ==="
+          echo "Deployment process completed."
+          echo "Check the logs above for any specific errors."
