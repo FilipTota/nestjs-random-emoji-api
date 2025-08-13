@@ -40,11 +40,11 @@ jobs:
         run: |
           echo "Setting up Railway authentication..."
           mkdir -p ~/.railway
-          # Railway CLI expects the token in a specific format
-          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
-          echo "Token file created with content:"
-          cat ~/.railway/token.json
-          echo "Token file permissions:"
+          # Railway CLI expects a specific config format
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
+          echo "Config file created with content:"
+          cat ~/.railway/config.json
+          echo "Config file permissions:"
           ls -la ~/.railway/
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -56,7 +56,7 @@ jobs:
           echo "RAILWAY_TOKEN environment variable set"
           # Also try setting it in the current shell
           echo "Setting token in current shell..."
-          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}"}' > ~/.railway/token.json
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
         continue-on-error: true
 
       - name: Try Railway CLI with explicit token
@@ -94,6 +94,22 @@ jobs:
           RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
           echo "Testing with token.json file:"
           railway whoami
+        continue-on-error: true
+
+      - name: Try Railway CLI with config file
+        run: |
+          echo "Trying Railway CLI with config file..."
+          echo "Current config file content:"
+          cat ~/.railway/config.json
+          echo "Testing with config file:"
+          railway whoami
+        continue-on-error: true
+
+      - name: Try Railway CLI with environment variable
+        run: |
+          echo "Trying Railway CLI with environment variable..."
+          echo "Setting RAILWAY_TOKEN in current step..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
         continue-on-error: true
 
       - name: Verify Railway token
