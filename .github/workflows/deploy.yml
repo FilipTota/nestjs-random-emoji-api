@@ -25,12 +25,14 @@ jobs:
         run: |
           echo "Setting up Railway authentication..."
           mkdir -p ~/.railway
-          # Try multiple authentication methods for newer Railway CLI
-          echo "${{ secrets.RAILWAY_TOKEN }}" > ~/.railway/token
-          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{}}' > ~/.railway/config.json
-          echo "Railway token files created"
+          # Railway CLI v4.6.3 expects a different format
+          echo '{"token":"${{ secrets.RAILWAY_TOKEN }}","projects":{},"user":{"id":"","email":""}}' > ~/.railway/config.json
+          echo "Railway config file created with v4.6.3 format"
+          echo "Config file content:"
+          cat ~/.railway/config.json
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
       - name: Verify Railway authentication
         run: |
           echo "Verifying Railway authentication..."
@@ -38,12 +40,22 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         continue-on-error: true
+
       - name: Try direct token authentication
         run: |
           echo "Trying direct token authentication..."
           RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway whoami
         continue-on-error: true
+
+      - name: Try to list projects with token
+        run: |
+          echo "Trying to list projects with explicit token..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway list
+        continue-on-error: true
+
       - name: Deploy to Railway
-        run: railway up --service="nestjs-random-emoji-api"
+        run: |
+          echo "Deploying with explicit token..."
+          RAILWAY_TOKEN="${{ secrets.RAILWAY_TOKEN }}" railway up --service="nestjs-random-emoji-api"
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
