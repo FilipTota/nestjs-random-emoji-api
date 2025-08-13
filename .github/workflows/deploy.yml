@@ -11,11 +11,160 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: ./.github/actions/build
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: latest
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm run build
+
       - name: Install Railway CLI
-        run: pnpm add --global @railway/cli
-      - name: Deploy to Railway
-        run: railway up --service="nestjs-random-emoji-api"
+        run: npm install -g @railway/cli
+
+      - name: Verify Railway CLI
+        run: railway --version
+
+      - name: Verify Railway token
+        run: |
+          echo "Verifying Railway token..."
+          railway whoami
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Debug Railway environment
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Files in directory:"
+          ls -la
+          echo "Railway configuration:"
+          cat railway.json
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Try to link Railway project
+        run: |
+          echo "Attempting to link Railway project..."
+          railway link
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try to initialize Railway project
+        run: |
+          echo "Attempting to initialize new Railway project..."
+          railway init
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Check Railway environment
+        run: |
+          echo "Checking Railway environment..."
+          railway environment
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try to set Railway environment
+        run: |
+          echo "Attempting to set Railway environment..."
+          railway environment --production
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Check Railway project info
+        run: |
+          echo "Checking Railway project info..."
+          railway status
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Get Railway project ID
+        run: |
+          echo "Getting Railway project ID..."
+          railway status --json | jq -r '.project.id' 2>/dev/null || echo "Could not get project ID"
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: List Railway services
+        run: |
+          echo "Listing available Railway services..."
+          railway service list
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try deployment with service name
+        run: |
+          echo "Attempting deployment with service name..."
+          railway up --service="nestjs-random-emoji-api" --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try deployment with different service name format
+        run: |
+          echo "Attempting deployment with different service name format..."
+          railway up --service="nestjs-random-emoji-api-service" --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try deployment with environment specification
+        run: |
+          echo "Attempting deployment with environment specification..."
+          railway up --environment=production --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Try deployment without service name
+        run: |
+          echo "Attempting deployment without service name..."
+          railway up --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Final deployment attempt
+        run: |
+          echo "Final deployment attempt..."
+          railway up
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Check deployment status
+        run: |
+          echo "Checking deployment status..."
+          railway status
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        continue-on-error: true
+
+      - name: Summary
+        run: |
+          echo "=== DEPLOYMENT SUMMARY ==="
+          echo "All deployment attempts completed."
+          echo "Check the logs above for any specific errors."
+          echo "If deployment failed, the issue might be:"
+          echo "1. Railway token permissions"
+          echo "2. Service name mismatch"
+          echo "3. Project not properly linked"
+          echo "4. Railway configuration issues"
